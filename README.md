@@ -59,7 +59,7 @@ Please **note** that this system is **slow**, as a single server has to deliver 
   
 ## Usage  
 import kHilltopConnector as kHK  
-kHTop = kHK.kHilltopConnector(apiUrl='https://data.hbrc.govt.nz/Envirodata/EMAR.hts')  
+kHTop = kHK.kHilltopConnector(apiUrl='HBRC')  
 mList = kHTop.measurementsList  
 kHTop.selectMeasurement = mList[0] #select relevant array position for measurement of interest  
 sList = kHTop.siteList  
