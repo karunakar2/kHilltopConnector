@@ -1,0 +1,14 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+data/openDataLinks.json
+src/kHilltopConnector/__init__.py
+src/kHilltopConnector/kHilltopConnector.py
+src/kHilltopConnector/openDataLinks.py
+src/kHilltopConnector.egg-info/PKG-INFO
+src/kHilltopConnector.egg-info/SOURCES.txt
+src/kHilltopConnector.egg-info/dependency_links.txt
+src/kHilltopConnector.egg-info/top_level.txt
