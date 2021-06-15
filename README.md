@@ -30,10 +30,11 @@ Please **note** that this system is **slow**, as a single server has to deliver 
 	5. minimalist	- _default_ False  
 		if True would not prefetch any information.  
 	+ **Available variables**
-	1. measurementsList		- available when minimalist is not invoked and is static  
-	2. selectMeasurement	- fn (3)  Measurements available through selected server - list
-	3. selectSite			- fn (4)  Available sites for select measurement - list
-	4. selectSiteLocation	- fn (4)  array of current site lat,long values  
+	1. measurementsList	- Measurements available through selected server - list || static
+	2. selectMeasurement	- user selection, should be from above list
+	3. siteList		- Available site for above select measurement - list || dynamic
+	4. selectSite		- user selection, should be from above list
+	5. selectSiteLocation	- array of current site lat,long values  
 	**Note**		: _The above 3 current operating variables are available upon calling listed functions_   
 	
 2. **kHilltopConnector.kHilltopConnector().fetchData()**  
