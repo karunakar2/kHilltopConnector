@@ -3,7 +3,6 @@ import os
 import datetime
 from io import StringIO
 import json
-import importlib.resources
 
 import requests as req
 import requests_cache as reqC

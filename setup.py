@@ -24,4 +24,7 @@ setuptools.setup(
     #data_files=[('data',['data/openDataLinks.json'])],
     packages=setuptools.find_packages(where="src"), #+ ['config'],
     python_requires=">=3.6",
+    install_requires=[
+      'datetime', 'requests', 'requests_cache', 'defusedxml', 'numpy', 'pandas'
+    ],
 )
