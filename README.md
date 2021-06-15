@@ -58,14 +58,14 @@ Please **note** that this system is **slow**, as a single server has to deliver 
 	**Note** : Flushes the cache and will be unsuccessfull if file is in use, try manual deletion when required  
   
 ## Usage  
-import kHilltopConnector as kHK
-kHTop = kHK.kHilltopConnector(apiUrl='https://data.hbrc.govt.nz/Envirodata/EMAR.hts')
-mList = kHTop.measurementsList
-kHTop.selectMeasurement = mList[0] #select relevant array position for measurement of interest
-sList = kHTop.siteList
-kHTop.selectSite = sList[178] #select proper array position for your site
-print(kHTop.selectSiteLocation)
-print(kHTop.selectSiteMeasurementEndTime)
-print((kHTop.fetchData()).head())
-
-#search for unitTests.ipynb for more info
+import kHilltopConnector as kHK  
+kHTop = kHK.kHilltopConnector(apiUrl='https://data.hbrc.govt.nz/Envirodata/EMAR.hts')  
+mList = kHTop.measurementsList  
+kHTop.selectMeasurement = mList[0] #select relevant array position for measurement of interest  
+sList = kHTop.siteList  
+kHTop.selectSite = sList[178] #select proper array position for your site  
+print(kHTop.selectSiteLocation)  
+print(kHTop.selectSiteMeasurementEndTime)  
+print((kHTop.fetchData()).head())  
+  
+#search for unitTests.ipynb for more info  
