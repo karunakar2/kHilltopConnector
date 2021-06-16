@@ -1,7 +1,7 @@
 # kHilltopConnector  
 
 ## What is this  
-A python module to fetch environmental data from NZ regional councils and others over internet
+A python module to fetch environmental data from NZ regional councils and others over internet.  
 
 ### Hilltop
 Hilltop is the software/database that majority of the regional councils in New Zealand use to store the environmental information. This is a robust setup and has a web api.  
@@ -9,7 +9,11 @@ Hilltop is the software/database that majority of the regional councils in New Z
 ### Native Hilltop library
 The native Hilltop library _module_ access the database directly and is quite fast. However, running an online app, demands the system to be in the same network. The system also does have an web API, when made available is quite robust.  
 The LAWA website is the best example of external applications retrieving the datasets. This module uses similar framework and is relatively lean on the requirements.  
-  
+
+### Existing state of the art  
+please see following repository, which is extensive  
+https://github.com/mullenkamp/hilltop-py  
+
 ### kHilltopConnector Module
 This is the module that would fetch information and the there is a list of regional council apis,and can be called into your existing code without much effort.  
 Please **note** that this system is **slow**, as a single server has to deliver humungous datasets to multiple requests. Cache is built into the module to cater for the responsiveness, however, it is advised to avoid large data requests passed through this module.  
