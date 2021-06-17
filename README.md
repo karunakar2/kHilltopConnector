@@ -62,7 +62,8 @@ Please **note** that this system is **slow**, as a single server has to deliver 
 5. **kHilltopConnector.kHilltopConnector().clobberCache()**  
 	**Note** : Flushes the cache and will be unsuccessfull if file is in use, try manual deletion when required  
   
-## Usage  
+## Usage
+### Python  
 import kHilltopConnector as kHK  
 kHTop = kHK.kHilltopConnector(apiUrl='HBRC')  
 mList = kHTop.measurementsList  
@@ -73,4 +74,17 @@ print(kHTop.selectSiteLocation)
 print(kHTop.selectSiteMeasurementEndTime)  
 print((kHTop.fetchData()).head())  
   
-#search for unitTests.ipynb for more info  
+##### search for unitTests.ipynb for more info  
+
+### R  
+**note** : Please use R Studio if possible  
+library(reticulate)  
+#point to the right version of python (x32 bit or x64 bits, reticulate is super keen on it  
+use_python("C:\\Users\\karunakar.kintada\\AppData\\Local\\Programs\\Python\\Python39\\python.exe", required=TRUE)  
+Sys.which("python")  
+  
+kHTop <- import("kHilltopConnector")  
+kHTop1 <- kHTop$kHilltopConnector(apiUrl = 'HBRC')  
+mList <- kHTop1$measurementsList  
+print(mList)  
+...
