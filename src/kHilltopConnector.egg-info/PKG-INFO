@@ -50,7 +50,7 @@ Please **note** that this system is **slow**, as a single server has to deliver 
 	1. measurementsList		- available when minimalist is not invoked and is static  
 	2. selectMeasurement	- fn (3)  Measurements available through selected server - list
 	3. selectSite			- fn (4)  Available sites for select measurement - list
-	4. selectSiteLocation	- fn (4)  array of current site lat,long values
+	4. selectSiteLocation	- fn (4)  array of current site lat,long values  
 	**Note**		: _The above 3 current operating variables are available upon calling listed functions_   
 	
 2. **kHilltopConnector.kHilltopConnector().fetchData()**  
@@ -75,15 +75,16 @@ Please **note** that this system is **slow**, as a single server has to deliver 
 	**Note** : Flushes the cache and will be unsuccessfull if file is in use, try manual deletion when required  
   
 ## Usage  
-import kHilltopConnector as kHK
-kHTop = kHK.kHilltopConnector(apiUrl='https://data.hbrc.govt.nz/Envirodata/EMAR.hts')
-mList = kHTop.measurementsList
-kHTop.selectMeasurement = mList[0] #select relevant array position for measurement of interest
-sList = kHTop.siteList
-kHTop.selectSite = sList[178] #select proper array position for your site
-print(kHTop.selectSiteLocation)
-print(kHTop.selectSiteMeasurementEndTime)
-print((kHTop.fetchData()).head())
+import kHilltopConnector as kHK  
+kHTop = kHK.kHilltopConnector(apiUrl='https://data.hbrc.govt.nz/Envirodata/EMAR.hts')  
+mList = kHTop.measurementsList  
+kHTop.selectMeasurement = mList[0] #select relevant array position for measurement of interest  
+sList = kHTop.siteList  
+kHTop.selectSite = sList[178] #select proper array position for your site  
+print(kHTop.selectSiteLocation)  
+print(kHTop.selectSiteMeasurementEndTime)  
+print((kHTop.fetchData()).head())  
+  
+#search for unitTests.ipynb for more info  
 
-#search for unitTests.ipynb for more info
 

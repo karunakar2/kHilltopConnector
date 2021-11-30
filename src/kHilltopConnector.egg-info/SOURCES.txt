@@ -11,4 +11,5 @@ src/kHilltopConnector/openDataLinks.py
 src/kHilltopConnector.egg-info/PKG-INFO
 src/kHilltopConnector.egg-info/SOURCES.txt
 src/kHilltopConnector.egg-info/dependency_links.txt
+src/kHilltopConnector.egg-info/requires.txt
 src/kHilltopConnector.egg-info/top_level.txt
