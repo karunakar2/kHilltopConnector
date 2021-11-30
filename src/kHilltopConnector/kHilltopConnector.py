@@ -522,6 +522,8 @@ class kHilltopConnector:
             combDf = pd.DataFrame()
             nextIter = True
             eDate = myEndDate
+            
+            #--------------------------------------------------------------------------
             while nextIter:
                 #local filling variables
                 timeList = []
@@ -546,7 +548,6 @@ class kHilltopConnector:
                         if myStartDate is not None:
                             myWebRequest += '&From='+str(myStartDate)
                         nextIter = False
-                        
                     else:
                         myWebRequest =  self._apiRoot+'Service=Hilltop&Request=GetData&Site='+site+'&Measurement='+measurement+'&From='+str(sDate)+'&To='+str(eDate)
                         eDate = sDate
@@ -598,22 +599,25 @@ class kHilltopConnector:
 
                     if self.debug:
                         print(data.head())
-                    
-                    if qCode:
-                        #[data['timestamp'].dt.date]).agg(
-                        data = data.groupby(pd.Grouper(key='timestamp', freq=str(avgDays)+'D')).agg(
-                            {measurement:'mean', 'qCode':'min'})[[measurement, 'qCode']].reset_index() 
-                            #drop=True isn't desired as it would drop the timestamp column as index
-                        if self.debug:
-                            print(data.head())
-                                        
-                    data.drop_duplicates(subset='timestamp', inplace=True)
+                     
                     if len(data) > 0:
+                        if qCode:
+                            #[data['timestamp'].dt.date]).agg(
+                            data = data.groupby(pd.Grouper(key='timestamp', freq=str(avgDays)+'D')).agg(
+                                {measurement:'mean', 'qCode':'min'})[[measurement, 'qCode']].reset_index() 
+                                #drop=True isn't desired as it would drop the timestamp column as index
+                            if self.debug:
+                                print(data.head())
+                        data.drop_duplicates(subset='timestamp', inplace=True)
                         combDf = pd.concat([combDf, data])
                 except Exception as er:
                     print(er)
+                    print('stopping further fetch')
                     nextIter = False
             
+            #--------------------------------------------------------------------------
+            if self.debug:
+                print(combDf.head())
             
             #check if we can fetch gaugings for this site
             if measurement == 'Flow [Water Level]' or measurement == 'Flow':
