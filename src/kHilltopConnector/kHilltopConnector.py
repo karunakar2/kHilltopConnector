@@ -71,52 +71,46 @@ class kHilltopConnector:
         #this is the key to let other functions know if we need debugging info
         self.debug = enableDebug
         #print(self._debugChange)
-        
+
         #the caching reduces the number of hits to the origin server
         if refreshInterval > 0:
             reqC.install_cache('hilltop_cache', backend='sqlite', expire_after=refreshInterval)
-        
+
         #read all the existing api URLs
         apiArchive = openDataLinks.apiArchive()
-        
+
         #set the custom api url of the hilltop
-        if apiUrl != '' :
+        if apiUrl != '':
             if '.hts' in apiUrl:
                 self._apiRoot = apiUrl
-            else:
-                if apiUrl in apiArchive.keys() :
-                    self._apiRoot = apiArchive[apiUrl]['Hilltop']
+            elif apiUrl in apiArchive.keys():
+                self._apiRoot = apiArchive[apiUrl]['Hilltop']
             if '?' not in self._apiRoot:
                 self._apiRoot += '?'
         else:
             print('Api url is required, you can also specify one of following preloaded keys')
             print([x for x in apiArchive.keys() if '-' not in x ])
-        
+
         if self._apiRoot is None:
             self.__myException('No Api Url selected','')
-        
+
         if not minimalist :
             print('The inititialisation takes quite sometime depending on the connection bandwidth')
-            
+
             #get this first, as it often can be smaller and less server time consuming than measlist
             #get the positional information of the observation sites
             _ = self.__getPosInfo()
-            
+
             #preload the necessary data
             self.measurementsList = []
             _ = self.__getMeasurementList() #get all the measurements
-            
+
             #set the initialisation variable to true
             self._initialised = True
-            
-        if self.debug:
-            pass
-            #print(self.__getMeasurementList())
-            #print(self.__getPosInfo())
-        
+
         #self.selectMeasurement = property(self.__get_measurement, self.__set_measurement)
         #self.selectSite = property(self.__get_site, self.__set_site)
-        
+
         #signal all good
         if self._initialised:
             print('kHilltopConnector object is ready')
@@ -131,7 +125,6 @@ class kHilltopConnector:
         if self.debug and url != None:
             print(url)
         raise RuntimeError('kHilltopConnector:',fn,' says ',err)
-        return None
     
     ##this function interfaces with the web and gets data
     def __webFetch(self,myWebRequest):
@@ -212,13 +205,12 @@ class kHilltopConnector:
         for thisStn in self._allStationLocation['Site']:
             myWebRequest = self._apiRoot+'Service=Hilltop&Request=MeasurementList&Site='+str(thisStn)
             root, _ = self.__webFetch(myWebRequest)
-            for child in root.iter('*'):
-                #print(child.tag,child.attrib)
-                if child.tag == 'Measurement':
-                    localMeasList.append(child.attrib['Name'])
-        localMeasList = list(dict.fromkeys(localMeasList)) #remove duplicates
-        #print(localMeasList)
-        return localMeasList        
+            localMeasList.extend(
+                child.attrib['Name']
+                for child in root.iter('*')
+                if child.tag == 'Measurement'
+            )
+        return list(dict.fromkeys(localMeasList))        
     
     ##this function gets the list of measurements available for acces
     def __getMeasurementList(self):
@@ -235,9 +227,8 @@ class kHilltopConnector:
                         self.measurementsList.append(child.attrib['Name'])
                 if len(self.measurementsList) < 1:
                     self.__myException('empty Measurement list returned','',url=myWebRequest)
-        else :
-            if self.debug:
-                print(self.measurementsList)
+        elif self.debug:
+            print(self.measurementsList)
         return self.measurementsList
     
     #this function gets the position information of the sites from hilltop server
@@ -291,12 +282,16 @@ class kHilltopConnector:
     
     #this function gets the end time of the measurement, useful when not specified by the user
     def __getSiteEndTime(self,site=None, measurement=None):
-        if site == None:
+        if site is None:
             site = self.selectSite
-        if measurement == None:
+        if measurement is None:
             measurement = self.selectMeasurement
-        
-        if site != None and measurement != None :
+
+        if site is None or measurement is None:
+            self.__myException('site and measurement are empty','',url=myWebRequest)
+            return None
+
+        else:
             myWebRequest=self._apiRoot+"Service=SOS&Request=GetObservation&FeatureOfInterest="+site+"&ObservedProperty="+measurement
             root, namespaces = self.__webFetch(myWebRequest)
             endTime = root.find('./wml2:observationMember/om:OM_Observation/om:resultTime/gml:TimeInstant//gml:timePosition',namespaces).text
@@ -304,32 +299,31 @@ class kHilltopConnector:
             endTime = datetime.datetime.fromisoformat(endTime)
             self.selectSiteMeasurementEndTime = endTime
             return endTime
-        else :
-            self.__myException('site and measurement are empty','',url=myWebRequest)
-            return None
 
     ##this function tries fetching all the sites for a given measurement
     def __getSiteListPerMeasurement(self,measurement=None) -> np.dtype.str:
         #this can't be stored as this is specific to each measurement
         #make sure measurement is a string
-        assert isinstance(measurement, str), self.__myException(str(measurement)+'is not valid','')
-        
-        if measurement == None :
-                self.__myException('please provide a valid measurement','')
-        
+        assert isinstance(measurement, str), self.__myException(
+            f'{str(measurement)}is not valid', ''
+        )
+
+        if measurement is None:
+            self.__myException('please provide a valid measurement','')
+
         #make sure the requested measurement type exists
-        if measurement in self.__getMeasurementList() :
+        if measurement in self.__getMeasurementList():
             #get all the sites for requisite measurement type
             myWebRequest =  self._apiRoot + 'Service=Hilltop&Request=SiteList&Measurement='+measurement
             root, _ = self.__webFetch(myWebRequest)
-            sites = []
-            for child in root.iter('*'):
-                #print(child.tag,child.attrib)
-                if child.tag == 'Site':
-                    sites.append(child.attrib['Name'])
+            sites = [
+                child.attrib['Name']
+                for child in root.iter('*')
+                if child.tag == 'Site'
+            ]
         else:
             self.__myException(measurement+' doesnt exist in catalogue','')
-            
+
         if len(sites) <1 :
             self.__myException(measurement+' sites list returned is empty','',url=myWebRequest)
         else : 
@@ -369,33 +363,31 @@ class kHilltopConnector:
     #get the guaging site list
     #this function uses latest pandas
     def __guagingSites(self,measurement:'str'='Stage [Gauging Results]'):
-        if (measurement == '') or (measurement == None):
+        if measurement == '' or measurement is None:
             raise 'Expecting to proper measurement to get the gaugings'
-        
+
         apiExt = 'Service=Hilltop&Request=SiteList&Location=Yes&Measurement='+measurement
         apiExt = apiExt.replace(' ','%20')
         slist = pd.read_xml(self._apiRoot+apiExt)
         slist.replace('None',float('nan'),inplace=True)
         slist.dropna(subset=['Name'],inplace=True)
-        siteList = slist['Name'].values
-        #print(siteList)
-        return siteList
+        return slist['Name'].values
     
     def __getGaugings(self,site,sDate=None,eDate=None, measurement:str='Stage [Gauging Results]'):
-        if (measurement == '') or (measurement == None):
+        if not measurement or measurement is None:
             raise Exception('Expecting to proper measurement to get the gaugings')
-            
-        if eDate == None:
+
+        if eDate is None:
             raise Exception('Please specify an end time for gaugings')
-        
-        apiExt = 'Service=Hilltop&Request=GetData&Measurement='+measurement 
+
+        apiExt = f'Service=Hilltop&Request=GetData&Measurement={measurement}'
         if sDate != None:
-            apiExt += '&From='+str(sDate)
-        apiExt += '&To='+str(eDate)+'&Interval=1 hour&method=Average&Site='
+            apiExt += f'&From={str(sDate)}'
+        apiExt += f'&To={str(eDate)}&Interval=1 hour&method=Average&Site='
         apiExt1 = apiExt + site
         apiExt1 = apiExt1.replace(' ','%20') #%20 is web equivalent of space char
         #print(baseUrl+apiExt1)
-        
+
         #xml needs translation
         #response = requests.get(self._apiRoot+apiExt1)
         #root = ET.fromstring(response.text)
@@ -407,19 +399,17 @@ class kHilltopConnector:
             for thisChild in child:
                 if thisChild.tag == 'DataSource':
                     for children in thisChild:
-                        temp = list(children.attrib.keys())
-                        if len(temp)>0:
+                        if temp := list(children.attrib.keys()):
                             #print(children.attrib[temp[0]])
                             colKey = children.attrib[temp[0]]
                             if children.tag == 'ItemInfo':
                                 for data in children:
-                                    if data.tag == 'ItemName':
-                                        colVal = data.text #string
                                     if data.tag == 'Divisor':
                                         divVal = float(data.text) #number
+                                    elif data.tag == 'ItemName':
+                                        colVal = data.text #string
                             myColumns[int(colKey)] = colVal
                             myDivisor[int(colKey)] = divVal
-                    pass
                 if thisChild.tag == 'Data':
                     for children in thisChild:
                         temp = []
@@ -428,9 +418,9 @@ class kHilltopConnector:
                                 key = data.text
                             else:
                                 temp.append(float(data.text))
-                        if len(temp) > 0:
+                        if temp:
                             thisData[key] = temp
-        
+
         myDivisor[0] = 1 #have to do it for that first and unknown column
         myDf = pd.DataFrame(data=thisData).T
         myDf = myDf.apply(lambda x: x/myDivisor[x.name])
@@ -440,7 +430,7 @@ class kHilltopConnector:
         #display(myDf)
         #myDf.plot(y='Flow',logy=True)
         #plt.show()
-        
+
         self.selectSiteGaugings = myDf
         return myDf
     
@@ -460,16 +450,21 @@ class kHilltopConnector:
     #data fetching functions
     #-------------------------------------------------------------------------
     # let know the return type with ->
-    def whatsNearest(self,lat:'deg',lon:'deg',searchRadius:'deg len'=0.05)->'Site': #5km approx
+    def whatsNearest(self,lat:'deg',lon:'deg',searchRadius:'deg len'=0.05) -> 'Site': #5km approx
         lat = float(lat)
         lon = float(lon)
         if (-90<lat<90) and (-180<=lon<=360):
             redDf = self._allStationLocation[(self._allStationLocation['Latitude'].between(lat-searchRadius,lat+searchRadius))&(self._allStationLocation['Longitude'].between(lon-searchRadius,lon+searchRadius))].copy()
             #calc nearest and sort by distance
-            redDf['dist'] = redDf.apply(lambda row:
-                                          math.sqrt((float(lat) - float(row.Latitude))**2 
-                                          + (float(lon) - float(row.Longitude))**2)
-                                          , axis=1)
+            redDf['dist'] = redDf.apply(
+                lambda row: math.sqrt(
+                    (
+                        (lat - float(row.Latitude)) ** 2
+                        + (lon - float(row.Longitude)) ** 2
+                    )
+                ),
+                axis=1,
+            )
             redDf.sort_values(by=['dist'],inplace=True)
             redDf.reset_index(drop=True, inplace=True)
             return redDf['Site'][0]
@@ -477,28 +472,34 @@ class kHilltopConnector:
     def fetchData(self, site=None, myStartDate=None, myEndDate=None, measurement=None, avgDays = 1, qCode=False, fetchYearsAtATime = 0, scaleFactor=1, drillDown=False) -> pd.DataFrame():
         
         #update measurment if in case provided
-        if measurement != None :
-            if measurement in self.__getMeasurementList() :
-                self.selectMeasurement = measurement
-            else : return None
-        else :
+        if measurement is None:
             #use the existing measurement to make sure, the site is valid
             measurement = self.selectMeasurement
-            
+
+        elif measurement in self.__getMeasurementList():
+            self.selectMeasurement = measurement
+        else: return None
         #make sure site is valid for above measurement
-        if site != None :
-            assert isinstance(site, str), self.__myException(str(site)+'is not valid','')
+        if site is None:
+            site = self.selectSite
+
+        else:
+            assert isinstance(site, str), self.__myException(
+                f'{str(site)}is not valid', ''
+            )
             if site in self.siteList :
                 self.selectSite = site
             else:
                 self.__myException(site+' and '+measurement+' are not connected','')
-        else :
-            site = self.selectSite
-        
         if myStartDate != None:
-            assert isinstance(myStartDate,datetime.date), self.__myException(str(myStartDate)+'is not valid','')
-        
-        if myEndDate != None:
+            assert isinstance(myStartDate, datetime.date), self.__myException(
+                f'{str(myStartDate)}is not valid', ''
+            )
+
+        if myEndDate is None:
+            myEndDate = (self.__getSiteEndTime()).date()
+
+        else:
             #assert isinstance(myEndDate,datetime.date), self.__myException(str(myEndDate)+'is not valid','')
             try:
                 if isinstance(myEndDate,datetime.date):
@@ -509,20 +510,19 @@ class kHilltopConnector:
                 self.selectSiteMeasurementEndTime = temp
             except Exception as er:
                 print(er)
-                self.__myException(str(myEndDate)+'is not valid','')
-                
-        else :
-            myEndDate = (self.__getSiteEndTime()).date()
-        
-        if myStartDate == None:
+                self.__myException(f'{str(myEndDate)}is not valid', '')
+
+        if myStartDate is None:
             drillDown = False
-        
+
         #get the observation data for the site
-        if myEndDate != None:
+        if myEndDate is None:
+            self.__myException(f'{str(myEndDate)} end date is not valid', '')
+        else:
             combDf = pd.DataFrame()
             nextIter = True
             eDate = myEndDate
-            
+
             #--------------------------------------------------------------------------
             while nextIter:
                 #local filling variables
@@ -530,10 +530,9 @@ class kHilltopConnector:
                 obsList = []
                 qualList = []
                 try:
-                    if myStartDate is not None:
-                        if eDate <= myStartDate:
-                            break
-                    
+                    if myStartDate is not None and eDate <= myStartDate:
+                        break
+
                     if isinstance(fetchYearsAtATime,int):
                         sDate = eDate.replace(year = eDate.year - fetchYearsAtATime)
                     elif isinstance(fetchYearsAtATime,float):
@@ -542,21 +541,20 @@ class kHilltopConnector:
                         sDate = eDate - datetime.timedelta(days = int(365*fetchYearsAtATime))
                     else:
                         raise Exception('couldnt parse fetchYearAtATime',fetchYearsAtATime)
-                    
+
                     if fetchYearsAtATime == 0:
                         myWebRequest =  self._apiRoot+'Service=Hilltop&Request=GetData&Site='+site+'&Measurement='+measurement+'&To='+str(eDate)+"&Interval="+str(avgDays)+" day&method=Average"
                         if myStartDate is not None:
-                            myWebRequest += '&From='+str(myStartDate)
+                            myWebRequest += f'&From={str(myStartDate)}'
                         nextIter = False
                     else:
                         myWebRequest =  self._apiRoot+'Service=Hilltop&Request=GetData&Site='+site+'&Measurement='+measurement+'&From='+str(sDate)+'&To='+str(eDate)
                         eDate = sDate
-                        if qCode :
-                            myWebRequest += '&ShowQuality=Yes' 
-                            #hilltop doesn't logistically average codes and not available at a sub sampling scale
-                        else :
-                            myWebRequest += "&Interval="+str(avgDays)+" day&method=Average"
-
+                        myWebRequest += (
+                            '&ShowQuality=Yes'
+                            if qCode
+                            else f"&Interval={str(avgDays)} day&method=Average"
+                        )
                     root, _ = self.__webFetch(myWebRequest)
                     temp = root.find('Error')
                     if temp != None:
@@ -565,8 +563,6 @@ class kHilltopConnector:
                             raise Exception(temp.text)
                         else:
                             print('drilling down to start date')
-                            pass
-                    
                     for child in root.iter('E'):
                         for miter in child.iter('*'):
                             if miter.text != 'nan':
@@ -590,22 +586,30 @@ class kHilltopConnector:
                                     except Exception as er:
                                         qualList.append(-999)
                                         print('quality code tag',er)
-                    
+
                     df={'timestamp':np.array(timeList),
                         measurement:np.true_divide(np.array(obsList).astype('float'), scaleFactor)}
-                    if len(qualList) >0:
+                    if qualList:
                         df['qCode'] = np.array(qualList)
                     data = pd.DataFrame (df, columns = df.keys())
 
                     if self.debug:
                         print(data.head())
-                     
+
                     if len(data) > 0:
                         if qCode:
                             #[data['timestamp'].dt.date]).agg(
-                            data = data.groupby(pd.Grouper(key='timestamp', freq=str(avgDays)+'D')).agg(
-                                {measurement:'mean', 'qCode':'min'})[[measurement, 'qCode']].reset_index() 
-                                #drop=True isn't desired as it would drop the timestamp column as index
+                            data = (
+                                data.groupby(
+                                    pd.Grouper(
+                                        key='timestamp', freq=f'{str(avgDays)}D'
+                                    )
+                                )
+                                .agg({measurement: 'mean', 'qCode': 'min'})[
+                                    [measurement, 'qCode']
+                                ]
+                                .reset_index()
+                            )
                             if self.debug:
                                 print(data.head())
                         data.drop_duplicates(subset='timestamp', inplace=True)
@@ -614,13 +618,13 @@ class kHilltopConnector:
                     print(er)
                     print('stopping further fetch')
                     nextIter = False
-            
+
             #--------------------------------------------------------------------------
             if self.debug:
                 print(combDf.head())
-            
+
             #check if we can fetch gaugings for this site
-            if measurement == 'Flow [Water Level]' or measurement == 'Flow':
+            if measurement in ['Flow [Water Level]', 'Flow']:
                 thisSiteList = self.__guagingSites()
                 try:
                     if site in thisSiteList:
@@ -631,7 +635,6 @@ class kHilltopConnector:
                         print(site,thisSiteList)
                 except Exception as er:
                     print(er)
-                    pass
             try:
                 combDf.sort_values(by=['timestamp'], inplace=True)
                 return combDf
@@ -639,5 +642,3 @@ class kHilltopConnector:
                 print(combDf.head())
                 raise er
                 #return None
-        else :
-            self.__myException(str(myEndDate)+' end date is not valid','')
