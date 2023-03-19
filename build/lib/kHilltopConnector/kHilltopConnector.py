@@ -61,50 +61,44 @@ class kHilltopConnector:
     def __init__(self,apiUrl='',refreshInterval=15*60,minimalist=False,enableDebug=False):
         #this is the key to let other functions know if we need debugging info
         self.debug = enableDebug
-        
+
         #the caching reduces the number of hits to the origin server
         if refreshInterval > 0:
             reqC.install_cache('hilltop_cache', backend='sqlite', expire_after=refreshInterval)
-        
+
         #read all the existing api URLs
         apiArchive = openDataLinks.apiArchive()
-        
+
         #set the custom api url of the hilltop
-        if apiUrl != '' :
+        if apiUrl != '':
             if '.hts' in apiUrl:
                 self._apiRoot = apiUrl
-            else:
-                if apiUrl in apiArchive.keys() :
-                    self._apiRoot = apiArchive[apiUrl]['Hilltop']
+            elif apiUrl in apiArchive.keys():
+                self._apiRoot = apiArchive[apiUrl]['Hilltop']
             if '?' not in self._apiRoot:
                 self._apiRoot += '?'
         else:
             print('Api url is required, you can also specify one of following preloaded keys')
             print([x for x in apiArchive.keys() if '-' not in x ])
-        
+
         if self._apiRoot is None:
             self.__myException('No Api Url selected','')
-        
+
         if not minimalist :
             print('The inititialisation takes quite sometime depending on the connection bandwidth')
             #preload the necessary data
             self.measurementsList = []
             _ = self.__getMeasurementList() #get all the measurements
-        
+
             #get the positional information of the observation sites
             _ = self.__getPosInfo()
-            
+
             #set the initialisation variable to true
             self._initialised = True
-            
-        if self.debug:
-            pass
-            #print(self.__getMeasurementList())
-            #print(self.__getPosInfo())
-        
+
         #self.selectMeasurement = property(self.__get_measurement, self.__set_measurement)
         #self.selectSite = property(self.__get_site, self.__set_site)
-        
+
         #signal all good
         if self._initialised:
             print('kHilltopConnector object is ready')
@@ -119,7 +113,6 @@ class kHilltopConnector:
         if self.debug and url != None:
             print(url)
         raise RuntimeError('kHilltopConnector:',fn,' says ',err)
-        return None
     
     ##this function interfaces with the web and gets data
     def __webFetch(self,myWebRequest):
@@ -168,9 +161,8 @@ class kHilltopConnector:
                     self.measurementsList.append(child.attrib['Name'])
             if len(self.measurementsList) < 1:
                 self.__myException('empty Measurement list returned','',url=myWebRequest)
-        else :
-            if self.debug:
-                print(self.measurementsList)
+        elif self.debug:
+            print(self.measurementsList)
         return self.measurementsList
     
     #this function gets the position information of the sites from hilltop server
@@ -225,12 +217,16 @@ class kHilltopConnector:
     
     #this function gets the end time of the measurement, useful when not specified by the user
     def __getSiteEndTime(self,site=None, measurement=None):
-        if site == None:
+        if site is None:
             site = self.selectSite
-        if measurement == None:
+        if measurement is None:
             measurement = self.selectMeasurement
-        
-        if site != None and measurement != None :
+
+        if site is None or measurement is None:
+            self.__myException('site and measurement are empty','',url=myWebRequest)
+            return None
+
+        else:
             myWebRequest=self._apiRoot+"Service=SOS&Request=GetObservation&FeatureOfInterest="+site+"&ObservedProperty="+measurement
             root, namespaces = self.__webFetch(myWebRequest)
             endTime = root.find('./wml2:observationMember/om:OM_Observation/om:resultTime/gml:TimeInstant//gml:timePosition',namespaces).text
@@ -238,32 +234,31 @@ class kHilltopConnector:
             endTime = datetime.datetime.fromisoformat(endTime)
             self.selectSiteMeasurementEndTime = endTime
             return endTime
-        else :
-            self.__myException('site and measurement are empty','',url=myWebRequest)
-            return None
 
     ##this function tries fetching all the sites for a given measurement
     def __getSiteListPerMeasurement(self,measurement=None) -> np.dtype.str:
         #this can't be stored as this is specific to each measurement
         #make sure measurement is a string
-        assert isinstance(measurement, str), self.__myException(str(measurement)+'is not valid','')
-        
-        if measurement == None :
-                self.__myException('please provide a valid measurement','')
-        
+        assert isinstance(measurement, str), self.__myException(
+            f'{str(measurement)}is not valid', ''
+        )
+
+        if measurement is None:
+            self.__myException('please provide a valid measurement','')
+
         #make sure the requested measurement type exists
-        if measurement in self.__getMeasurementList() :
+        if measurement in self.__getMeasurementList():
             #get all the sites for requisite measurement type
             myWebRequest =  self._apiRoot + 'Service=Hilltop&Request=SiteList&Measurement='+measurement
             root, _ = self.__webFetch(myWebRequest)
-            sites = []
-            for child in root.iter('*'):
-                #print(child.tag,child.attrib)
-                if child.tag == 'Site':
-                    sites.append(child.attrib['Name'])
+            sites = [
+                child.attrib['Name']
+                for child in root.iter('*')
+                if child.tag == 'Site'
+            ]
         else:
             self.__myException(measurement+' doesnt exist in catalogue','')
-            
+
         if len(sites) <1 :
             self.__myException(measurement+' sites list returned is empty','',url=myWebRequest)
         else : 
@@ -321,46 +316,54 @@ class kHilltopConnector:
     # let know the return type with ->
     def fetchData(self, site=None, myStartDate=None, myEndDate=None, measurement=None, daily=True, scaleFactor=1) -> pd.DataFrame():
         #update measurment if in case provided
-        if measurement != None :
-            if measurement in self.__getMeasurementList() :
-                self.selectMeasurement = measurement
-            else : return None
-        else :
+        if measurement is None:
             #use the existing measurement to make sure, the site is valid
             measurement = self.selectMeasurement
-            
+
+        elif measurement in self.__getMeasurementList():
+            self.selectMeasurement = measurement
+        else: return None
         #make sure site is valid for above measurement
-        if site != None :
-            assert isinstance(site, str), self.__myException(str(site)+'is not valid','')
+        if site is None:
+            site = self.selectSite
+
+        else:
+            assert isinstance(site, str), self.__myException(
+                f'{str(site)}is not valid', ''
+            )
             if site in self.siteList :
                 self.selectSite = site
             else:
                 self.__myException(site+' and '+measurement+' are not connected','')
-        else :
-            site = self.selectSite
-            
-        if myEndDate != None:
-            assert isinstance(myEndDate,datetime.date), self.__myException(str(myEndDate)+'is not valid','')
-        else :
+        if myEndDate is None:
             myEndDate = str((self.__getSiteEndTime()).date())
-            
+
+        else:
+            assert isinstance(myEndDate, datetime.date), self.__myException(
+                f'{str(myEndDate)}is not valid', ''
+            )
         if myStartDate != None:
-            assert isinstance(myStartDate,datetime.date), self.__myException(str(myStartDate)+'is not valid','')
-        
-        #make sure the site is for said measurement
-        #local filling variables
-        timeList = []
-        obsList = []
-        
+            assert isinstance(myStartDate, datetime.date), self.__myException(
+                f'{str(myStartDate)}is not valid', ''
+            )
+
         #get the observation data for the site
-        if myEndDate != None:
+        if myEndDate is None:
+            self.__myException(f'{str(myEndDate)} end date is not valid', '')
+
+        else:
             myWebRequest =  self._apiRoot+'Service=Hilltop&Request=GetData&Site='+site+'&Measurement='+measurement+'&To='+str(myEndDate)
             if daily:
                 myWebRequest += "&Interval=1 day&method=Average"
             if myStartDate is not None:
-                myWebRequest += '&From='+str(myStartDate)
+                myWebRequest += f'&From={str(myStartDate)}'
 
             root, _ = self.__webFetch(myWebRequest)
+            #make sure the site is for said measurement
+            #local filling variables
+            timeList = []
+            obsList = []
+
             for child in root.iter('E'):
                 for miter in child.iter('*'):
                     if miter.text != 'nan':
@@ -370,7 +373,7 @@ class kHilltopConnector:
                             except Exception as er :
                                 timeList.append(float('NAN'))
                                 print(er)
-                                                
+
                         if miter.tag == 'I1':
                             try:
                                 obsList.append(float(miter.text))
@@ -379,10 +382,7 @@ class kHilltopConnector:
                                 print(er)
 
             df={'timestamp':np.array(timeList), measurement:np.true_divide(np.array(obsList).astype('float'),scaleFactor)}
-            data = pd.DataFrame (df, columns = ['timestamp',measurement])
-            return data
-        else :
-            self.__myException(str(myEndDate)+' end date is not valid','')
+            return pd.DataFrame (df, columns = ['timestamp',measurement])
         
         
             
